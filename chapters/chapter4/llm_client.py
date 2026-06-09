@@ -1,4 +1,5 @@
 import os
+
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import List, Dict
@@ -46,16 +47,17 @@ class HelloAgentsLLM:
             )
 
             # 处理流式响应
-            print(f"\033[34m✅ 大语言模型响应成功---start\033[0m")
+            # print(f"\033[31m✅ 大语言模型原始响应结果---start\033[0m")
             collected_content = []
             for chunk in response:
                 if not chunk.choices:
                     continue
                 content = chunk.choices[0].delta.content or ""
-                print(content, end="", flush=True)
+                # print(content, end="", flush=True)
                 collected_content.append(content)
-            print()  # 在流式输出结束后换行
-            print(f"\033[34m✅ 大语言模型响应成功---end\033[0m")
+            # print()  # 在流式输出结束后换行
+            # print(f"\033[31m✅ 大语言模型原始响应结果---end\033[0m")
+            print(f"🧠 {self.model} 模型响应成功...")
             return "".join(collected_content)
 
         except Exception as e:

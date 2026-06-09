@@ -1,3 +1,10 @@
+import os
+import sys
+
+current_dir = os.path.dirname(__file__)
+sys.path.append(current_dir)
+sys.path.append(os.path.join(current_dir, ".."))
+
 from Plan import Planner
 from Executor import Executor
 from llm_client import HelloAgentsLLM
