@@ -119,7 +119,9 @@ class ReActAgent:
                 # ... 处理无效Action格式 ...
                 continue
 
-            print(f"\033[32m🎬 行动: {tool_name}[{tool_input}]\033[0m")
+            print(f"\033[32m🎬 行动---start\033[0m")
+            print(f"{tool_name}[{tool_input}]")
+            print(f"\033[32m🎬 行动---end\033[0m")
 
             tool_function = self.tool_executor.getTool(tool_name)
             if not tool_function:
@@ -141,12 +143,17 @@ class ReActAgent:
         return None
 
 
-if __name__ == "__main__":
+def getReAct():
     llm = HelloAgentsLLM()
     tool_executor = ToolExecutor()
     search_desc = "一个网页搜索引擎。当你需要回答关于时事、事实以及在你的知识库中找不到的信息时，应使用此工具。"
     tool_executor.registerTool("Search", search_desc, search)
     agent = ReActAgent(llm_client=llm, tool_executor=tool_executor)
+    return agent
+
+
+if __name__ == "__main__":
+    agent = getReAct()
     # question = "苹果最新的手机是哪一款？它的主要卖点是什么？"
-    question = "你觉得1+1等于几"
+    question = "你觉得1+1等于几，2+2又等于几"
     agent.run(question)
