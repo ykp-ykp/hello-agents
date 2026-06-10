@@ -1,6 +1,6 @@
-## 本章节主要实现了三种经典的智能体构建范式
+## 本章节主要实现了四种经典的智能体构建范式
 
-ReAct、Plan-and-Solve、Reflection
+ReAct、Plan-and-Solve、Reflection、Function Calling
 
 ### ReAct
 
@@ -44,6 +44,16 @@ ReAct、Plan-and-Solve、Reflection
 优点：这种方式可以提升LLM输出答案的质量，让结果更优。
 
 缺点：回答任何问题都会经过反思和优化两个过程，token消耗会翻倍；反思和优化二者是串行的，效率比普通不反思的agent更低。
+
+### Function Calling
+
+**核心思想**：把本地函数以结构化 schema 的形式提供给模型，让模型在需要外部信息或业务动作时输出 `tool_calls`，Agent 根据函数名和参数执行真实函数，再把函数结果交回模型生成最终回答。
+
+**思想解释**：ReAct 通常要求模型在文本里写出 `Action: Search[...]`，然后由 Agent 自己解析这段文本；Function Calling 则让模型直接输出结构化的函数调用请求，Agent 不需要从自然语言里猜工具名和参数。
+
+**优点**：函数名和参数更稳定，适合连接业务系统、数据库、搜索、订单查询等确定性工具。
+
+**缺点**：需要模型和接口支持 tools/function calling；同时仍然要由 Agent 控制哪些函数可以被调用，以及函数执行后的安全边界。
 
 ### 思考
 
