@@ -3,10 +3,12 @@
 1. 理解用户需求
 2. 使用Tavily API真实搜索信息
 3. 生成基于搜索结果的回答
+4. 询问用户是否满意，不满意则重新理解需求并搜索
 """
 
 import asyncio
-from typing import TypedDict, Annotated
+import json
+from typing import TypedDict, Annotated, Literal
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
@@ -28,6 +30,11 @@ class SearchState(TypedDict):
     search_results: str  # Tavily搜索结果
     final_answer: str  # 最终生成的答案
     step: str  # 当前步骤
+    satisfaction: str  # 用户满意度：satisfied / unsatisfied
+
+
+class FeedbackClassification(TypedDict):
+    satisfaction: Literal["满意", "不满意"]
 
 
 # 初始化模型和Tavily客户端
@@ -78,7 +85,7 @@ def understand_query_node(state: SearchState) -> SearchState:
         "user_query": response.content,
         "search_query": search_query,
         "step": "understood",
-        "messages": [AIMessage(content=f"我理解您的需求：{response.content}")],
+        "messages": [AIMessage(content=f"我理解您的需求：\n {response.content}")],
     }
 
 
@@ -123,7 +130,7 @@ def tavily_search_node(state: SearchState) -> SearchState:
             "search_results": search_results,
             "step": "searched",
             "messages": [
-                AIMessage(content=f"✅ 搜索完成！找到了相关信息，正在为您整理答案...")
+                AIMessage(content="✅ 搜索完成！找到了相关信息，正在为您整理答案...")
             ],
         }
 
@@ -181,20 +188,77 @@ def generate_answer_node(state: SearchState) -> SearchState:
     }
 
 
+def feedback_node(state: SearchState) -> SearchState:
+    """步骤4：询问用户是否对结果满意"""
+
+    user_feedback = input("\n🤔 您对结果满意吗？(满意/不满意): ").strip()
+
+    if not user_feedback:
+        satisfaction = "satisfied"
+        print("[feedback] 满意度分类: 用户未输入反馈，默认分类为满意")
+    else:
+        print(f"[feedback] 满意度分类: 用户反馈={user_feedback}")
+        classify_prompt = f"""请判断用户对上一次回答是否满意。
+                            用户反馈：{user_feedback}
+                            
+                            分类规则：
+                            1. 如果用户表达认可、接受、问题已解决，分类为：满意
+                            2. 如果用户表达否定、疑问未解决、想继续搜索或重新回答，分类为：不满意
+                            """
+
+        # 分析根据用户反馈，结构化输出是否满意
+        classifier = llm.with_structured_output(
+            FeedbackClassification, method="function_calling"
+        )
+        classification = classifier.invoke([SystemMessage(content=classify_prompt)])
+        print("[feedback] 满意度分类: 使用 function_calling 结构化输出")
+
+        satisfaction = (
+            "unsatisfied"
+            if classification.get("satisfaction") == "不满意"
+            else "satisfied"
+        )
+        print(
+            f"[feedback] 满意度分类: 模型分类={classification.get('satisfaction')}，状态值={satisfaction}"
+        )
+
+    return {
+        "satisfaction": satisfaction,
+        "step": "feedback",
+        "messages": [],
+    }
+
+
+def should_continue(state: SearchState) -> str:
+    """条件边：判断是否需要重新搜索"""
+    if state["satisfaction"] == "satisfied":
+        return "end"
+    else:
+        return "retry"
+
+
 # 构建搜索工作流
 def create_search_assistant():
     workflow = StateGraph(SearchState)
 
-    # 添加三个节点  点
+    # 添加四个节点
     workflow.add_node("understand", understand_query_node)
     workflow.add_node("search", tavily_search_node)
     workflow.add_node("answer", generate_answer_node)
+    workflow.add_node("feedback", feedback_node)
 
-    # 设置线性流程  边
+    # 设置流程
     workflow.add_edge(START, "understand")
     workflow.add_edge("understand", "search")
     workflow.add_edge("search", "answer")
-    workflow.add_edge("answer", END)
+    workflow.add_edge("answer", "feedback")
+
+    # 条件边：满意→END，不满意→回到understand重新理解
+    workflow.add_conditional_edges(
+        "feedback",
+        should_continue,
+        {"end": END, "retry": "understand"},
+    )
 
     # 编译图
     memory = InMemorySaver()
@@ -216,6 +280,7 @@ async def main():
     print("🔍 智能搜索助手启动！")
     print("我会使用Tavily API为您搜索最新、最准确的信息")
     print("支持各种问题：新闻、技术、知识问答等")
+    print("回答后会询问您是否满意，不满意可以重新搜索")
     print("(输入 'quit' 退出)\n")
 
     session_count = 0
@@ -241,6 +306,7 @@ async def main():
             "search_results": "",
             "final_answer": "",
             "step": "start",
+            "satisfaction": "",
         }
 
         try:
