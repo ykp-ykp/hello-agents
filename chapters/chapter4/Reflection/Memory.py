@@ -22,7 +22,7 @@ class Memory:
         """
         record = {"type": record_type, "content": content}
         self.records.append(record)
-        print(f"📝 记忆已更新，新增一条 '{record_type}' 记录。")
+        # print(f"📝 记忆已更新，新增一条 '{record_type}' 记录。")
 
     def get_trajectory(self) -> str:
         """

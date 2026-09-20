@@ -66,25 +66,27 @@ class ReflectionAgent:
         self.max_iterations = max_iterations
 
     def run(self, task: str):
-        print(f"\n--- 开始处理任务 ---\n任务: {task}")
-
+        print(f"\n--- 首次处理任务: {task}")
+        
         # --- 1. 初始执行 ---
-        print("\n--- 正在进行初始尝试 ---")
+        print(f"\033[32m正在进行初次尝试...\033[0m \n")
         initial_prompt = INITIAL_PROMPT_TEMPLATE.format(task=task)
         initial_code = self._get_llm_response(initial_prompt)
+        print(f"\033[32m初次尝试完成，输出结果为： \033[0m 👇\n")
+        print(f"{initial_code}\n")
         self.memory.add_record("execution", initial_code)
 
         # --- 2. 迭代循环：反思与优化 ---
         for i in range(self.max_iterations):
-            print(f"\033[31m第 {i+1}/{self.max_iterations} 轮迭代 ---start\033[0m")
+            print(f"\033[31m第 {i+1}/{self.max_iterations} 轮反思-----------------------------------------------------start\033[0m\n")
 
             # a. 反思
-            print("\n-> 正在进行反思...")
             last_code = self.memory.get_last_execution()
+            print(f"\033[33m正在进行反思...\033[0m \n")
             reflect_prompt = REFLECT_PROMPT_TEMPLATE.format(task=task, code=last_code)
             feedback = self._get_llm_response(reflect_prompt)
-            # print(f"\n反思结果： {feedback} ")
-
+            print(f"\033[33m反思完成，反思结果为： \033[0m 👇\n")
+            print(f"{feedback}\n")
             self.memory.add_record("reflection", feedback)
 
             # b. 检查是否需要停止
@@ -93,13 +95,16 @@ class ReflectionAgent:
                 break
 
             # c. 优化
-            print("\n-> 正在进行优化...")
+            print(f"\033[34m正在进行优化...\033[0m \n")
             refine_prompt = REFINE_PROMPT_TEMPLATE.format(
                 task=task, last_code_attempt=last_code, feedback=feedback
             )
             refined_code = self._get_llm_response(refine_prompt)
+            print(f"\033[34m优化完成，优化结果为： \033[0m 👇\n")
+            print(f"{refined_code}\n")
+            
             self.memory.add_record("execution", refined_code)
-            print(f"\033[31m第 {i+1}/{self.max_iterations} 轮迭代 ---end\033[0m")
+            print(f"\033[31m第 {i+1}/{self.max_iterations} 轮反思-----------------------------------------------------end\033[0m")
 
         final_code = self.memory.get_last_execution()
         print(f"\n--- 任务完成 ---\n最终生成的代码:\n{final_code}")
@@ -121,8 +126,8 @@ if __name__ == "__main__":
         print(f"初始化LLM客户端时出错: {e}")
         exit()
 
-    # 2. 初始化 Reflection 智能体，设置最多迭代3轮
-    agent = ReflectionAgent(llm_client, max_iterations=3)
+    # 2. 初始化 Reflection 智能体，设置最多迭代5轮
+    agent = ReflectionAgent(llm_client, max_iterations=5)
 
     # 3. 定义任务并运行智能体
     task = "编写一个Python函数，找出1到n之间所有的素数 (prime numbers)。"
