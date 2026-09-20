@@ -22,7 +22,7 @@ REACT_PROMPT_TEMPLATE = """
 可用工具如下:
 {tools}
 
-请严格按照以下格式进行回应:
+请严格按照以下格式进行回应,必须包含Thought和Action两项:
 
 Thought: 你的思考过程，用于分析问题、拆解任务和规划下一步行动。
 Action: 你决定采取的行动，必须是以下格式之一:
@@ -58,7 +58,7 @@ class ReActAgent:
         action = action_match.group(1).strip() if action_match else None
         return thought, action
 
-    def _parse_action(self, action_text: str):
+    def _parse_tool(self, action_text: str):
         """解析Action字符串，提取工具名称和输入。"""
         match = re.match(r"(\w+)\[(.*)\]", action_text, re.DOTALL)
         if match:
@@ -96,17 +96,24 @@ class ReActAgent:
                 break
 
             # ... (后续的解析、执行、整合步骤)
+            print(f"\033[35m模型Thought阶段-------------------------------------------------start\033[0m")
 
-            # 3. 解析LLM的输出
+            # 3. 解析LLM的输出为thought和action
             thought, action = self._parse_output(response_text)
             if thought:
-                print(f"\033[34m🤔思考--start\033[0m")
+                print(f"\033[34m解析出的Thought\033[0m ⬇")
                 print(f"{thought}")
-                print(f"\033[34m🤔思考--end\033[0m")
+                
+            if action:
+                print(f"\033[32m解析出的Action\033[0m ⬇")
+                print(f"{action}")
+                
             if not action:
                 print("警告:未能解析出有效的Action，流程终止。")
                 break
-
+            
+            print(f"\033[35m模型Thought阶段-------------------------------------------------end\033[0m\n")
+            
             # 4. 执行Action
             if action.startswith("Finish"):
                 # 如果是Finish指令，提取最终答案并结束
@@ -114,29 +121,30 @@ class ReActAgent:
                 print(f"🎉 最终答案: {final_answer}")
                 return final_answer
 
-            tool_name, tool_input = self._parse_action(action)
+            tool_name, tool_input = self._parse_tool(action)
             if not tool_name or not tool_input:
                 # ... 处理无效Action格式 ...
                 continue
 
-            print(f"\033[32m🎬 行动---start\033[0m")
+            print(f"\033[31mAction阶段-------------------------------------------------start\033[0m")
             print(f"{tool_name}[{tool_input}]")
-            print(f"\033[32m🎬 行动---end\033[0m")
 
             tool_function = self.tool_executor.getTool(tool_name)
             if not tool_function:
                 observation = f"错误:未找到名为 '{tool_name}' 的工具。"
             else:
                 observation = tool_function(tool_input)  # 调用真实工具
+            print(f"\033[31mAction阶段-------------------------------------------------end\033[0m\n")
+            
 
             # (这段逻辑紧随工具调用之后，在 while 循环的末尾)
-            print(f"\033[34m👀 观察---start\033[0m")
+            print(f"\033[37m👀 Observation阶段-------------------------------------------------start\033[0m")
             print(f"{observation}")
-            print(f"\033[34m👀 观察---end\033[0m")
-
             # 5.将本轮的Action和Observation添加到历史记录中
             self.history.append(f"Action: {action}")
             self.history.append(f"Observation: {observation}")
+            print(f"\033[37m👀 Observation阶段-------------------------------------------------end\033[0m\n")
+            
 
         # 循环结束
         print("已达到最大步数，流程终止。")
@@ -154,6 +162,6 @@ def getReAct():
 
 if __name__ == "__main__":
     agent = getReAct()
-    # question = "苹果最新的手机是哪一款？它的主要卖点是什么？"
-    question = "你觉得1+1等于几，2+2又等于几"
+    question = "苹果最新的手机是哪一款？它的主要卖点是什么？"
+    # question = "你觉得1+1等于几，2+2又等于几"
     agent.run(question)

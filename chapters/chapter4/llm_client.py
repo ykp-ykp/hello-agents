@@ -33,7 +33,7 @@ class HelloAgentsLLM:
 
         self.client = OpenAI(api_key=apiKey, base_url=baseUrl, timeout=timeout)
 
-    def think(self, messages: List[Dict[str, str]], temperature: float = 0) -> str:
+    def think(self, messages: List[Dict[str, str]], temperature: float = 1) -> str:
         """
         调用大语言模型进行思考，并返回其响应。
         """
@@ -57,7 +57,7 @@ class HelloAgentsLLM:
                 collected_content.append(content)
             # print()  # 在流式输出结束后换行
             # print(f"\033[31m✅ 大语言模型原始响应结果---end\033[0m")
-            print(f"🧠 {self.model} 模型响应成功...")
+            print(f"🧠 {self.model} 模型响应成功...\n")
             return "".join(collected_content)
 
         except Exception as e:
