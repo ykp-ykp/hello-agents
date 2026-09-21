@@ -8,6 +8,7 @@ sys.path.append(os.path.join(current_dir, ".."))
 
 from llm_client import HelloAgentsLLM
 from tools import ToolExecutor, search
+from BaseAgent import BaseAgent
 
 """
 ReAct (Reason + Act)由Shunyu Yao于2022年提出，其核心思想是模仿人类解决问题的方式，
@@ -36,7 +37,7 @@ History: {history}
 """
 
 
-class ReActAgent:
+class ReActAgent(BaseAgent):
     def __init__(
         self,
         llm_client: HelloAgentsLLM,
