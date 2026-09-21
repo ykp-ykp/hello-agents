@@ -45,11 +45,16 @@ class PlanAndSolveAgent:
         print_output_block("任务完成-最终答案", final_answer)
 
 
+def getPlanAndSolveAgent():
+    # 初始化LLM客户端并创建PlanAndSolve智能体实例
+    llm_client = HelloAgentsLLM()
+    agent = PlanAndSolveAgent(llm_client)
+    return agent
+
 # --- 5. 主函数入口 ---
 if __name__ == "__main__":
     try:
-        llm_client = HelloAgentsLLM()
-        agent = PlanAndSolveAgent(llm_client)
+        agent = getPlanAndSolveAgent()
         # question = "一个水果店周一卖出了15个苹果。周二卖出的苹果数量是周一的两倍。周三卖出的数量比周二少了5个。请问这三天总共卖出了多少个苹果？"
         question = "1+1等于几，2+2又等于几"
         agent.run(question)
