@@ -1,13 +1,17 @@
 import os
 import sys
 
+
 current_dir = os.path.dirname(__file__)
 sys.path.append(current_dir)
 sys.path.append(os.path.join(current_dir, ".."))
+sys.path.append(os.path.join(current_dir, "..", "Reflection"))
 
-from Plan import Planner
+from Plan import Planner, PLANNER_REFLECT_PROMPT_TEMPLATE, PLANNER_REFINE_PROMPT_TEMPLATE
 from Executor import Executor
 from llm_client import HelloAgentsLLM
+from BaseAgent import BaseAgent
+from Reflection import ReflectionAgent
 
 
 def print_output_block(title: str, content: str) -> None:
@@ -16,13 +20,20 @@ def print_output_block(title: str, content: str) -> None:
     print(f"\033[34m✅ {title}---end\033[0m")
 
 
-class PlanAndSolveAgent:
+class PlanAndSolveAgent(BaseAgent):
     def __init__(self, llm_client):
         """
         初始化智能体，同时创建规划器和执行器实例。
         """
-        self.llm_client = llm_client
-        self.planner = Planner(self.llm_client)
+        super().__init__(llm_client)
+        planner_agent = ReflectionAgent(
+            llm_client=self.llm_client,
+            max_iterations=5,
+            initial_prompt_template="{task}",
+            reflect_prompt_template=PLANNER_REFLECT_PROMPT_TEMPLATE,
+            refine_prompt_template=PLANNER_REFINE_PROMPT_TEMPLATE,
+        )
+        self.planner = Planner(planner_agent)
         self.executor = Executor(self.llm_client)
 
     def run(self, question: str):
@@ -43,6 +54,7 @@ class PlanAndSolveAgent:
         final_answer = self.executor.execute(question, plan)
 
         print_output_block("任务完成-最终答案", final_answer)
+        return final_answer
 
 
 def getPlanAndSolveAgent():

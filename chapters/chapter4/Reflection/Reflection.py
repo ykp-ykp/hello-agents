@@ -7,6 +7,7 @@ sys.path.append(os.path.join(current_dir, ".."))
 
 from Memory import Memory
 from llm_client import HelloAgentsLLM
+from BaseAgent import BaseAgent
 
 # --- 模块 2: Reflection 智能体 ---
 
@@ -59,18 +60,27 @@ REFINE_PROMPT_TEMPLATE = """
 """
 
 
-class ReflectionAgent:
-    def __init__(self, llm_client, max_iterations=3):
-        self.llm_client = llm_client
+class ReflectionAgent(BaseAgent):
+    def __init__(
+        self,
+        llm_client,
+        max_iterations=3,
+        initial_prompt_template=INITIAL_PROMPT_TEMPLATE,
+        reflect_prompt_template=REFLECT_PROMPT_TEMPLATE,
+        refine_prompt_template=REFINE_PROMPT_TEMPLATE,
+    ):
+        super().__init__(llm_client)
         self.memory = Memory()
         self.max_iterations = max_iterations
+        self.initial_prompt_template = initial_prompt_template
+        self.reflect_prompt_template = reflect_prompt_template
+        self.refine_prompt_template = refine_prompt_template
 
     def run(self, task: str):
-        print(f"\n--- 首次处理任务: {task}")
         
         # --- 1. 初始执行 ---
         print(f"\033[32m正在进行初次尝试...\033[0m \n")
-        initial_prompt = INITIAL_PROMPT_TEMPLATE.format(task=task)
+        initial_prompt = self.initial_prompt_template.format(task=task)
         initial_code = self._get_llm_response(initial_prompt)
         print(f"\033[32m初次尝试完成，输出结果为： \033[0m 👇\n")
         print(f"{initial_code}\n")
@@ -83,7 +93,7 @@ class ReflectionAgent:
             # a. 反思
             last_code = self.memory.get_last_execution()
             print(f"\033[33m正在进行反思...\033[0m \n")
-            reflect_prompt = REFLECT_PROMPT_TEMPLATE.format(task=task, code=last_code)
+            reflect_prompt = self.reflect_prompt_template.format(task=task, code=last_code)
             feedback = self._get_llm_response(reflect_prompt)
             print(f"\033[33m反思完成，反思结果为： \033[0m 👇\n")
             print(f"{feedback}\n")
@@ -92,11 +102,12 @@ class ReflectionAgent:
             # b. 检查是否需要停止
             if "无需改进" in feedback or "no need for improvement" in feedback.lower():
                 print("\n✅ 反思认为代码已无需改进，任务完成。")
+                print(f"\033[31m第 {i+1}/{self.max_iterations} 轮反思-----------------------------------------------------end\033[0m")
                 break
 
             # c. 优化
             print(f"\033[34m正在进行优化...\033[0m \n")
-            refine_prompt = REFINE_PROMPT_TEMPLATE.format(
+            refine_prompt = self.refine_prompt_template.format(
                 task=task, last_code_attempt=last_code, feedback=feedback
             )
             refined_code = self._get_llm_response(refine_prompt)
@@ -107,7 +118,6 @@ class ReflectionAgent:
             print(f"\033[31m第 {i+1}/{self.max_iterations} 轮反思-----------------------------------------------------end\033[0m")
 
         final_code = self.memory.get_last_execution()
-        print(f"\n--- 任务完成 ---\n最终生成的代码:\n{final_code}")
         return final_code
 
     def _get_llm_response(self, prompt: str) -> str:
